@@ -13,13 +13,67 @@ export interface BusinessCol {
   kind: "string" | "bool";
 }
 
+export interface FnExample {
+  sql: string;
+  description: string;
+}
+
+/** One entry of a static vgi.result_columns_schema — {name, type, description}. */
+export interface ResultColumn {
+  name: string;
+  /** A real DuckDB type (VARCHAR / BOOLEAN / …). */ type: string;
+  description: string;
+}
+
 export interface CollectionSpec {
   fn: string;
   collection: Collection;
   defaultSelect: string;
   description: string;
   business: BusinessCol[];
+  /** vgi.title — human display name (multi-word so it doesn't equal the machine name). */
+  title: string;
+  /** vgi.keywords — search terms / synonyms. */
+  keywords: string[];
+  /** vgi.doc_llm — LLM-oriented "what is it / when to use it" prose. */
+  docLlm: string;
+  /** vgi.doc_md — richer human Markdown narrative. */
+  docMd: string;
+  /** vgi.result_columns_schema — the static result columns as {name,type,description}. */
+  resultColumns: ResultColumn[];
+  /** Per-function examples surfaced via the function descriptor. */
+  examples: FnExample[];
 }
+
+// The control/cursor columns are common to every collection's output; only the
+// three business columns in the middle differ. This shared head/tail keeps every
+// result_columns_schema aligned with schemaFor()'s field order.
+const RESULT_COLUMNS_HEAD: ResultColumn[] = [
+  { name: "id", type: "VARCHAR", description: "The directory object's id (GUID). NULL on the marker row." },
+  {
+    name: "change_type",
+    type: "VARCHAR",
+    description: "'upsert' (created/updated) or 'removed' (deleted). NULL on the marker row.",
+  },
+  {
+    name: "removed_reason",
+    type: "VARCHAR",
+    description: "For removed rows, the @removed.reason ('changed' or 'deleted'); NULL otherwise.",
+  },
+];
+const RESULT_COLUMNS_TAIL: ResultColumn[] = [
+  {
+    name: "_row_kind",
+    type: "VARCHAR",
+    description: "NULL for data rows; 'marker' for the single trailing cursor row.",
+  },
+  {
+    name: "_delta_next",
+    type: "VARCHAR",
+    description:
+      "On the marker row, the verbatim @odata.deltaLink to persist and replay as the next cursor; NULL on data rows.",
+  },
+];
 
 export const USERS: CollectionSpec = {
   fn: "directory_users_delta",
@@ -30,6 +84,40 @@ export const USERS: CollectionSpec = {
     { col: "user_principal_name", field: "userPrincipalName", kind: "string" },
     { col: "display_name", field: "displayName", kind: "string" },
     { col: "account_enabled", field: "accountEnabled", kind: "bool" },
+  ],
+  title: "Entra Users Delta Feed",
+  keywords: ["entra id", "azure ad", "users", "user", "accounts", "upn", "delta", "change feed", "identity"],
+  docLlm:
+    "Incremental change feed of Microsoft Entra ID (Azure AD) users via Microsoft Graph delta query. " +
+    "Each scan returns users created or updated since the supplied delta_token (change_type 'upsert') " +
+    "and users deleted (change_type 'removed'), followed by a marker row whose _delta_next is the " +
+    "cursor to persist. Call with no delta_token for a full sync. Columns: user_principal_name, " +
+    "display_name, and account_enabled by default (adjust with the select argument).",
+  docMd:
+    "## directory_users_delta\n\n" +
+    "Entra ID users as an incremental change feed backed by Microsoft Graph's `users/delta` query. " +
+    "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
+    "`_delta_next`. See the examples for full, runnable queries.",
+  resultColumns: [
+    ...RESULT_COLUMNS_HEAD,
+    { name: "user_principal_name", type: "VARCHAR", description: "The user's UPN (sign-in name)." },
+    { name: "display_name", type: "VARCHAR", description: "The user's display name." },
+    { name: "account_enabled", type: "BOOLEAN", description: "Whether the account is enabled for sign-in." },
+    ...RESULT_COLUMNS_TAIL,
+  ],
+  examples: [
+    {
+      sql: "SELECT id, user_principal_name, display_name, account_enabled FROM azure.main.directory_users_delta() WHERE _row_kind IS NULL",
+      description: "Full sync of all users (data rows only)",
+    },
+    {
+      sql: "SELECT id, change_type, display_name FROM azure.main.directory_users_delta(delta_token := '<@odata.deltaLink>')",
+      description: "Incremental sync replaying a previously saved delta cursor",
+    },
+    {
+      sql: "SELECT _delta_next FROM azure.main.directory_users_delta() WHERE _row_kind = 'marker'",
+      description: "Read the delta cursor to persist for the next sync",
+    },
   ],
 };
 
@@ -43,6 +131,40 @@ export const GROUPS: CollectionSpec = {
     { col: "mail", field: "mail", kind: "string" },
     { col: "security_enabled", field: "securityEnabled", kind: "bool" },
   ],
+  title: "Entra Groups Delta Feed",
+  keywords: ["entra id", "azure ad", "groups", "group", "security group", "distribution", "mail", "delta", "change feed"],
+  docLlm:
+    "Incremental change feed of Microsoft Entra ID (Azure AD) groups via Microsoft Graph delta query. " +
+    "Each scan returns groups created or updated since the supplied delta_token (change_type 'upsert') " +
+    "and groups deleted (change_type 'removed'), followed by a marker row whose _delta_next is the " +
+    "cursor to persist. Call with no delta_token for a full sync. Columns: display_name, mail, and " +
+    "security_enabled by default.",
+  docMd:
+    "## directory_groups_delta\n\n" +
+    "Entra ID groups as an incremental change feed backed by Microsoft Graph's `groups/delta` query. " +
+    "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
+    "`_delta_next`. See the examples for full, runnable queries.",
+  resultColumns: [
+    ...RESULT_COLUMNS_HEAD,
+    { name: "display_name", type: "VARCHAR", description: "The group's display name." },
+    { name: "mail", type: "VARCHAR", description: "The group's mail address, if mail-enabled." },
+    { name: "security_enabled", type: "BOOLEAN", description: "Whether the group is a security group." },
+    ...RESULT_COLUMNS_TAIL,
+  ],
+  examples: [
+    {
+      sql: "SELECT id, display_name, mail, security_enabled FROM azure.main.directory_groups_delta() WHERE _row_kind IS NULL",
+      description: "Full sync of all groups (data rows only)",
+    },
+    {
+      sql: "SELECT id, display_name FROM azure.main.directory_groups_delta() WHERE _row_kind IS NULL AND security_enabled",
+      description: "Security-enabled groups only",
+    },
+    {
+      sql: "SELECT _delta_next FROM azure.main.directory_groups_delta() WHERE _row_kind = 'marker'",
+      description: "Read the delta cursor to persist for the next sync",
+    },
+  ],
 };
 
 export const DEVICES: CollectionSpec = {
@@ -54,6 +176,44 @@ export const DEVICES: CollectionSpec = {
     { col: "display_name", field: "displayName", kind: "string" },
     { col: "operating_system", field: "operatingSystem", kind: "string" },
     { col: "account_enabled", field: "accountEnabled", kind: "bool" },
+  ],
+  title: "Entra Devices Delta Feed",
+  keywords: ["entra id", "azure ad", "devices", "device", "operating system", "endpoints", "delta", "change feed"],
+  docLlm:
+    "Incremental change feed of Microsoft Entra ID (Azure AD) registered devices via Microsoft Graph " +
+    "delta query. Each scan returns devices created or updated since the supplied delta_token " +
+    "(change_type 'upsert') and devices deleted (change_type 'removed'), followed by a marker row " +
+    "whose _delta_next is the cursor to persist. Call with no delta_token for a full sync. Columns: " +
+    "display_name, operating_system, and account_enabled by default.",
+  docMd:
+    "## directory_devices_delta\n\n" +
+    "Entra ID devices as an incremental change feed backed by Microsoft Graph's `devices/delta` query. " +
+    "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
+    "`_delta_next`. See the examples for full, runnable queries.",
+  resultColumns: [
+    ...RESULT_COLUMNS_HEAD,
+    { name: "display_name", type: "VARCHAR", description: "The device's display name." },
+    {
+      name: "operating_system",
+      type: "VARCHAR",
+      description: "The device's operating system (e.g. Windows, iOS).",
+    },
+    { name: "account_enabled", type: "BOOLEAN", description: "Whether the device account is enabled." },
+    ...RESULT_COLUMNS_TAIL,
+  ],
+  examples: [
+    {
+      sql: "SELECT id, display_name, operating_system, account_enabled FROM azure.main.directory_devices_delta() WHERE _row_kind IS NULL",
+      description: "Full sync of all devices (data rows only)",
+    },
+    {
+      sql: "SELECT operating_system, count(*) FROM azure.main.directory_devices_delta() WHERE _row_kind IS NULL GROUP BY operating_system",
+      description: "Device count by operating system",
+    },
+    {
+      sql: "SELECT _delta_next FROM azure.main.directory_devices_delta() WHERE _row_kind = 'marker'",
+      description: "Read the delta cursor to persist for the next sync",
+    },
   ],
 };
 

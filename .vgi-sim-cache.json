@@ -1,0 +1,145 @@
+{
+  "61eb1fa27034bbe3": {
+    "name": "devices_by_os",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: directory_devices_delta: attach an 'azure_graph' secret (TYPE azure_graph)\nError: directory_devices_delta: attach an 'azure_graph' secret (TYPE azure_graph)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/src/functions.ts:57:30)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:182:16)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-directory/src/worker.ts]",
+    "friction": [
+      "directory_devices_delta requires an azure_graph secret; nothing in list_tables or describe_function states this precondition up front, so the requirement only surfaces as a runtime error.",
+      "describe_function's doc names the default projection (display_name, operating_system, account_enabled) but does not document the always-present envelope columns (change_type, _delta_next), so the marker-row filter has to be inferred from the schema comment rather than the function's own argument/column docs.",
+      "There is no credential-free sample or describe_table for the delta functions, so column names and the marker-row convention can't be verified without live credentials."
+    ],
+    "queries": 2,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 2,
+      "queries": 2,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 1,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 0,
+      "hit_ceiling": false,
+      "score": 92
+    },
+    "suggestions": [
+      "Analyst noted: directory_devices_delta requires an azure_graph secret; nothing in list_tables or describe_function states this precondition up front, so the requirement only surfaces as a runtime error.",
+      "Analyst noted: describe_function's doc names the default projection (display_name, operating_system, account_enabled) but does not document the always-present envelope columns (change_type, _delta_next), so the marker-row filter has to be inferred from the schema comment rather than the function's own argument/column docs.",
+      "Analyst noted: There is no credential-free sample or describe_table for the delta functions, so column names and the marker-row convention can't be verified without live credentials."
+    ],
+    "attempts_used": 1
+  },
+  "fb8d73827911c058": {
+    "name": "save_delta_cursor",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: directory_users_delta: attach an 'azure_graph' secret (TYPE azure_graph)\nError: directory_users_delta: attach an 'azure_graph' secret (TYPE azure_graph)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/src/functions.ts:57:30)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:182:16)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-directory/src/worker.ts]",
+    "friction": [
+      "The docs say the feed ends with 'one marker row whose _delta_next is the cursor' but never state how to identify that row \u2014 whether change_type is NULL on it, whether _delta_next is NULL on data rows, or whether the data columns are NULL on the marker. I filtered on `_delta_next IS NOT NULL` as the most likely predicate, but this is inferred, not documented.",
+      "The output columns of the delta functions aren't enumerated anywhere reachable: describe_table rejects table functions ('no table main.directory_users_delta'), and describe_function lists only the input arguments plus a prose mention of user_principal_name, display_name, account_enabled, change_type, and _delta_next. There is no credential-free way to see the result schema.",
+      "Every call path to the delta functions requires an attached azure_graph secret, so the result shape can't be validated at all without live tenant credentials \u2014 even a LIMIT 0 probe fails. The answer_sql above is therefore unexecuted."
+    ],
+    "queries": 1,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 4,
+      "queries": 1,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 1,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 1,
+      "hit_ceiling": false,
+      "score": 84
+    },
+    "suggestions": [
+      "Agent looked up an object that doesn't exist \u2014 the metadata implies a name that isn't there; align docs/examples with the real schema.",
+      "Analyst noted: The docs say the feed ends with 'one marker row whose _delta_next is the cursor' but never state how to identify that row \u2014 whether change_type is NULL on it, whether _delta_next is NULL on data rows, or whether the data columns are NULL on the marker. I filtered on `_delta_next IS NOT NULL` as the most likely predicate, but this is inferred, not documented.",
+      "Analyst noted: The output columns of the delta functions aren't enumerated anywhere reachable: describe_table rejects table functions ('no table main.directory_users_delta'), and describe_function lists only the input arguments plus a prose mention of user_principal_name, display_name, account_enabled, change_type, and _delta_next. There is no credential-free way to see the result schema.",
+      "Analyst noted: Every call path to the delta functions requires an attached azure_graph secret, so the result shape can't be validated at all without live tenant credentials \u2014 even a LIMIT 0 probe fails. The answer_sql above is therefore unexecuted."
+    ],
+    "attempts_used": 1
+  },
+  "30d5d377bac33fcd": {
+    "name": "security_groups",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: directory_groups_delta: attach an 'azure_graph' secret (TYPE azure_graph)\nError: directory_groups_delta: attach an 'azure_graph' secret (TYPE azure_graph)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/src/functions.ts:57:30)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:182:16)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-directory/src/worker.ts]",
+    "friction": [
+      "The delta table functions require an azure_graph secret, so their columns cannot be observed at all without credentials \u2014 even a zero-row probe fails.",
+      "describe_function does not return a column list for table functions. The column names (display_name, mail, security_enabled, change_type, _delta_next) had to be reconstructed from prose in the description and doc_llm text, and it is still unclear whether an object id column is present.",
+      "The marker row's shape is described only in prose. Whether the non-marker rows carry a NULL _delta_next \u2014 the assumption this query's filter rests on \u2014 is implied but never stated."
+    ],
+    "queries": 1,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 3,
+      "queries": 1,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 1,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 0,
+      "hit_ceiling": false,
+      "score": 92
+    },
+    "suggestions": [
+      "Analyst noted: The delta table functions require an azure_graph secret, so their columns cannot be observed at all without credentials \u2014 even a zero-row probe fails.",
+      "Analyst noted: describe_function does not return a column list for table functions. The column names (display_name, mail, security_enabled, change_type, _delta_next) had to be reconstructed from prose in the description and doc_llm text, and it is still unclear whether an object id column is present.",
+      "Analyst noted: The marker row's shape is described only in prose. Whether the non-marker rows carry a NULL _delta_next \u2014 the assumption this query's filter rests on \u2014 is implied but never stated."
+    ],
+    "attempts_used": 1
+  },
+  "f93e2781a4126994": {
+    "name": "browse_collections",
+    "outcome": "fail",
+    "reason": "result differs from the reference solution",
+    "friction": [],
+    "queries": 1,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 2,
+      "queries": 1,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 0,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 0,
+      "hit_ceiling": false,
+      "score": 100
+    },
+    "suggestions": [],
+    "attempts_used": 1
+  },
+  "905bf3d54fd0168c": {
+    "name": "list_enabled_users",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: directory_users_delta: attach an 'azure_graph' secret (TYPE azure_graph)\nError: directory_users_delta: attach an 'azure_graph' secret (TYPE azure_graph)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/src/functions.ts:57:30)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-directory/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (unknown)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-directory/src/worker.ts]",
+    "friction": [
+      "directory_users_delta() fails at scan time with \"attach an 'azure_graph' secret (TYPE azure_graph)\". The catalog metadata gives no way to know this before running \u2014 neither list_tables nor describe_function mentions the credential requirement. Only directory_collections' comment hints at it ('before attaching an azure_graph secret').",
+      "describe_function's truncated output did not include the result column list, so the control columns (_row_kind, _delta_next, change_type, removed_reason) were not discoverable through the documented tool surface. They are present in the function's vgi.result_columns_schema tag and in the examples, but the tool output cut off before showing them.",
+      "The docs describe the marker row via _delta_next but the canonical data-row predicate is _row_kind IS NULL. Two columns encode the same distinction, which invites the wrong filter."
+    ],
+    "queries": 1,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 3,
+      "queries": 1,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 1,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 0,
+      "hit_ceiling": false,
+      "score": 92
+    },
+    "suggestions": [
+      "Analyst noted: directory_users_delta() fails at scan time with \"attach an 'azure_graph' secret (TYPE azure_graph)\". The catalog metadata gives no way to know this before running \u2014 neither list_tables nor describe_function mentions the credential requirement. Only directory_collections' comment hints at it ('before attaching an azure_graph secret').",
+      "Analyst noted: describe_function's truncated output did not include the result column list, so the control columns (_row_kind, _delta_next, change_type, removed_reason) were not discoverable through the documented tool surface. They are present in the function's vgi.result_columns_schema tag and in the examples, but the tool output cut off before showing them.",
+      "Analyst noted: The docs describe the marker row via _delta_next but the canonical data-row predicate is _row_kind IS NULL. Two columns encode the same distinction, which invites the wrong filter."
+    ],
+    "attempts_used": 1
+  }
+}

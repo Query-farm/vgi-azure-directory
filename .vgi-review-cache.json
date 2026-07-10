@@ -1,0 +1,98 @@
+{
+  "d0f129bc596c1491": {
+    "object": "azure",
+    "kind": "catalog",
+    "scores": {
+      "accuracy": 4,
+      "clarity": 5,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "The prose says removed rows are objects that were 'deleted', but toRow() maps @removed.reason of either 'changed' or 'deleted' into change_type 'removed'. Say that 'removed' means the object left the delta scope (deleted OR moved out of scope) and point at the undocumented removed_reason column that disambiguates.",
+      "Document the loss-safety ordering that only exists as a code comment in users-delta.ts: persist _delta_next only after the data rows are durably applied, because a crash mid-apply is recovered by replaying the old token and relying on upsert-by-id idempotency.",
+      "State the failure mode of an expired or invalid delta_token. Graph answers 410 Gone, collectDelta has no retry-with-full-resync path, so the scan surfaces a raw fetch error and the agent must clear the token and re-run a full sync."
+    ],
+    "summary": "Well-targeted catalog prose with an accurate secret/permission story, undercut by treating 'removed' as synonymous with 'deleted' and by omitting cursor-durability and token-expiry behavior."
+  },
+  "5231e331c0baae5d": {
+    "object": "azure.main",
+    "kind": "schema",
+    "scores": {
+      "accuracy": 3,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "'the $select projection is pinned for the life of a token' overstates what the code does. initialState() sets startUrl = delta_token whenever a token is supplied, so the select argument is silently ignored on incremental scans rather than pinned or validated. Reword to: select applies only to full syncs; on a token replay it has no effect.",
+      "The doc_md table lists three columns of output ('changed users + delta cursor') but never names the two control columns every function emits, id/change_type/removed_reason plus _row_kind/_delta_next. A single shared shape line here would let an agent write a correct query without opening a function's result_columns_schema.",
+      "Add the one cross-function caveat that matters for correctness: removed rows are id-only tombstones (fields: {} in toRow), so every business column is NULL on them. A predicate like WHERE account_enabled silently drops deletions."
+    ],
+    "summary": "Clear one-shape-fits-three framing, but the 'pinned $select' claim describes behavior the code does not implement and the tombstone NULL trap goes unmentioned."
+  },
+  "ef0487c1d729ffaf": {
+    "object": "azure.main.directory_collections",
+    "kind": "view",
+    "scores": {
+      "accuracy": 5,
+      "clarity": 5,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "table_function holds bare names ('directory_users_delta'), but every runnable query needs azure.main.directory_users_delta(). Either say so in the column comment or expose a second column with the catalog-qualified name so an agent can interpolate the value directly into SQL.",
+      "The docs never say the view is a fixed three-row VALUES relation. Stating 'exactly three rows, static, no worker call' tells an agent it can be read once and cached rather than re-scanned.",
+      "The doc_llm sells this as the pre-credential entry point but stops short of the next step. Add that every function it names requires an attached azure_graph secret (tenant_id, client_id, client_secret) and that binding without one succeeds while scanning throws."
+    ],
+    "summary": "Accurate and appropriately scoped discovery view whose prose matches its VALUES definition exactly; loses ground only on unqualified function names and an unstated row count."
+  },
+  "f39b6c42600acc34": {
+    "object": "azure.main.directory_users_delta",
+    "kind": "table_function",
+    "scores": {
+      "accuracy": 2,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 3
+    },
+    "suggestions": [
+      "'Columns: user_principal_name, display_name, and account_enabled by default (adjust with the select argument)' is wrong. onBind returns schemaFor(spec), whose fields come from the hardcoded spec.business array, so select can never add or rename an output column. Narrowing select just nulls out the existing columns; widening it drops the extra fields on the floor. Say the output schema is fixed and select only controls what Graph is asked to return.",
+      "Example 2 (delta_token := '<@odata.deltaLink>') omits WHERE _row_kind IS NULL, so it returns the trailing marker row as an all-NULL id/change_type/display_name row mixed in with real changes. Either add the filter or annotate that the last row is the cursor.",
+      "removed_reason is in the result schema and in RESULT_COLUMNS_HEAD but appears in neither doc_llm nor doc_md. Document that change_type='removed' with removed_reason='changed' means out-of-scope, not a deleted user, and that such rows carry NULL user_principal_name, display_name, and account_enabled."
+    ],
+    "summary": "Fluent delta-feed prose with one materially false claim (that select adjusts the output columns) and no mention of the removed_reason column or its all-NULL tombstone rows."
+  },
+  "ebcc37d881506a33": {
+    "object": "azure.main.directory_groups_delta",
+    "kind": "table_function",
+    "scores": {
+      "accuracy": 3,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 3
+    },
+    "suggestions": [
+      "The select parameter doc ('Pinned for the life of a delta token \u2014 changing it forces a full resync') describes an enforcement that does not exist. When delta_token is non-empty, select is never read, so no resync is forced and no error is raised. Document it as ignored on token replay.",
+      "Example 2 (WHERE _row_kind IS NULL AND security_enabled) is correct for a full sync but is a trap on an incremental one: removed groups have security_enabled NULL and vanish from the result. Add a comment or a companion example showing change_type = 'removed' handling.",
+      "Say what mail is for a security-only group. The result_columns_schema hints at it ('if mail-enabled') but doc_llm presents mail as a plain default column, so an agent will not expect pervasive NULLs when grouping or joining on it."
+    ],
+    "summary": "Structurally accurate and clearly written, but inherits the misleading select-parameter contract and ships a security_enabled example that silently swallows deletions on incremental scans."
+  },
+  "43de1e6fdb57040a": {
+    "object": "azure.main.directory_devices_delta",
+    "kind": "table_function",
+    "scores": {
+      "accuracy": 3,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 3
+    },
+    "suggestions": [
+      "The count-by-OS example (GROUP BY operating_system WHERE _row_kind IS NULL) reads as a tenant-wide inventory but only returns that on a full sync. Replayed with a delta_token it counts the changed devices in that window, and removed devices land in a NULL operating_system bucket with no way to tell them from missing data. Label it 'full sync only' or add change_type to the projection.",
+      "buildDeltaBatch emits the entire drained scan as a single Arrow batch, and collectDelta buffers every page before returning. For a large tenant a full device sync materializes all rows in memory at once. That memory profile belongs in doc_llm since agents reach for full syncs first.",
+      "operating_system is documented as 'e.g. Windows, iOS' but is passed straight through from Graph's operatingSystem string, which is uncontrolled free text and case-inconsistent across registration sources. Warn that grouping on it without normalization splits the same OS across buckets."
+    ],
+    "summary": "Solid parallel prose whose flagship aggregate example is only meaningful on a full sync, with no warning about free-text OS values or whole-scan buffering."
+  }
+}

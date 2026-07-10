@@ -28,6 +28,21 @@ export function makeDeltaFunction(spec: CollectionSpec, clientFactory: ClientFac
     description: spec.description,
     args: { delta_token: new Utf8(), select: new Utf8() },
     argDefaults: { delta_token: "", select: spec.defaultSelect },
+    argDocs: {
+      delta_token:
+        "A previously persisted `@odata.deltaLink` (the `_delta_next` value from a prior scan's marker row), replayed verbatim to return only what changed since. Empty (the default) performs a full sync.",
+      select:
+        "Comma-separated Microsoft Graph `$select` projection of fields to fetch. Pinned for the life of a delta token — changing it forces a full resync. Defaults to this collection's standard columns.",
+    },
+    examples: spec.examples,
+    tags: {
+      "vgi.category": "directory-delta",
+      "vgi.title": spec.title,
+      "vgi.keywords": JSON.stringify(spec.keywords),
+      "vgi.doc_llm": spec.docLlm,
+      "vgi.doc_md": spec.docMd,
+      "vgi.result_columns_schema": JSON.stringify(spec.resultColumns),
+    },
     onBind: () => ({ outputSchema: schema }),
     initialState: (p) => ({
       done: false,
