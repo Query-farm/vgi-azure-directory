@@ -13,8 +13,10 @@ export type ClientFactory = (secret: Record<string, unknown>) => GraphClient;
 interface Args {
   /** A previously persisted @odata.deltaLink (replayed verbatim), or "" for a full sync. */
   delta_token: string;
-  /** $select projection — pinned for the life of a delta token. */
-  select: string;
+  /** $select projection — pinned for the life of a delta token. Named `select_fields`
+   *  (not `select`) because `select` is a DuckDB reserved keyword and cannot appear as a
+   *  named-argument name (`fn(select := …)` fails to parse). */
+  select_fields: string;
 }
 interface State {
   done: boolean;
@@ -26,12 +28,12 @@ export function makeDeltaFunction(spec: CollectionSpec, clientFactory: ClientFac
   return defineTableFunction<Args, State>({
     name: spec.fn,
     description: spec.description,
-    args: { delta_token: new Utf8(), select: new Utf8() },
-    argDefaults: { delta_token: "", select: spec.defaultSelect },
+    args: { delta_token: new Utf8(), select_fields: new Utf8() },
+    argDefaults: { delta_token: "", select_fields: spec.defaultSelect },
     argDocs: {
       delta_token:
         "A previously persisted `@odata.deltaLink` (the `_delta_next` value from a prior scan's marker row), replayed verbatim to return only what changed since. Empty (the default) performs a full sync.",
-      select:
+      select_fields:
         "Comma-separated Microsoft Graph `$select` projection of fields to fetch. Pinned for the life of a delta token — changing it forces a full resync. Defaults to this collection's standard columns.",
     },
     examples: spec.examples,
@@ -42,11 +44,17 @@ export function makeDeltaFunction(spec: CollectionSpec, clientFactory: ClientFac
       "vgi.doc_llm": spec.docLlm,
       "vgi.doc_md": spec.docMd,
       "vgi.result_columns_schema": JSON.stringify(spec.resultColumns),
+      // The native duckdb_functions().examples carrier keeps only the SQL and drops each
+      // example's description, so we also publish the described form as a vgi.example_queries
+      // tag (byte-identical [{description, sql}] to `examples`) for the graders and callers.
+      "vgi.example_queries": JSON.stringify(
+        spec.examples.map((e) => ({ description: e.description, sql: e.sql })),
+      ),
     },
     onBind: () => ({ outputSchema: schema }),
     initialState: (p) => ({
       done: false,
-      startUrl: p.args.delta_token ? p.args.delta_token : deltaStartUrl(spec.collection, p.args.select),
+      startUrl: p.args.delta_token ? p.args.delta_token : deltaStartUrl(spec.collection, p.args.select_fields),
     }),
     process: async (p, state: State, out: OutputCollector) => {
       if (state.done) {

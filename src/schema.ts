@@ -92,12 +92,13 @@ export const USERS: CollectionSpec = {
     "Each scan returns users created or updated since the supplied delta_token (change_type 'upsert') " +
     "and users deleted (change_type 'removed'), followed by a marker row whose _delta_next is the " +
     "cursor to persist. Call with no delta_token for a full sync. Columns: user_principal_name, " +
-    "display_name, and account_enabled by default (adjust with the select argument).",
+    "display_name, and account_enabled by default (adjust with the select_fields argument).",
   docMd:
     "## directory_users_delta\n\n" +
     "Entra ID users as an incremental change feed backed by Microsoft Graph's `users/delta` query. " +
     "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
-    "`_delta_next`. See the examples for full, runnable queries.",
+    "`_delta_next`. Deleted users arrive as `change_type = 'removed'` tombstone rows carrying only " +
+    "their `id`; widen or narrow the fetched attributes with the `select_fields` argument.",
   resultColumns: [
     ...RESULT_COLUMNS_HEAD,
     { name: "user_principal_name", type: "VARCHAR", description: "The user's UPN (sign-in name)." },
@@ -143,7 +144,8 @@ export const GROUPS: CollectionSpec = {
     "## directory_groups_delta\n\n" +
     "Entra ID groups as an incremental change feed backed by Microsoft Graph's `groups/delta` query. " +
     "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
-    "`_delta_next`. See the examples for full, runnable queries.",
+    "`_delta_next`. Mail-enabled groups expose a `mail` address; deleted groups arrive as " +
+    "`change_type = 'removed'` tombstone rows carrying only their `id`.",
   resultColumns: [
     ...RESULT_COLUMNS_HEAD,
     { name: "display_name", type: "VARCHAR", description: "The group's display name." },
@@ -189,7 +191,8 @@ export const DEVICES: CollectionSpec = {
     "## directory_devices_delta\n\n" +
     "Entra ID devices as an incremental change feed backed by Microsoft Graph's `devices/delta` query. " +
     "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
-    "`_delta_next`. See the examples for full, runnable queries.",
+    "`_delta_next`. Each device row carries its `operating_system`; deleted devices arrive as " +
+    "`change_type = 'removed'` tombstone rows carrying only their `id`.",
   resultColumns: [
     ...RESULT_COLUMNS_HEAD,
     { name: "display_name", type: "VARCHAR", description: "The device's display name." },
