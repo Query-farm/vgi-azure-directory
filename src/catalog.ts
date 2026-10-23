@@ -96,52 +96,29 @@ const CATALOG_TAGS: Record<string, string> = {
     },
   ]),
   // The agent-suitability suite (VGI520/VGI920), catalog only. Every worker object is
-  // exercised by exactly one task. `reference_sql` is the canonical fully-qualified
-  // solution (grader-only) — it drives static coverage (VGI520) and authenticated
-  // reference grading; `success_criteria` is the LLM-judge rubric used when the sim
-  // runs unauthenticated (a live directory scan needs an azure_graph secret and returns
-  // tenant-specific data, so an exact-compare reference can only be graded with real
-  // credentials). None of reference_sql / success_criteria is ever shown to the analyst.
+  // exercised by exactly one task. Only each task's name + prompt is published here
+  // (VGI416); the grader fields (reference_sql / success_criteria) live in the private
+  // sidecar vgi-agent-tests.yaml, keyed by task name, and are never shown to the analyst.
   "vgi.agent_test_tasks": JSON.stringify([
     {
       name: "list_enabled_users",
       prompt: "List the enabled users in the Entra ID tenant with their user principal name and display name.",
-      reference_sql:
-        "SELECT user_principal_name, display_name FROM azure.main.directory_users_delta() WHERE _row_kind IS NULL AND account_enabled ORDER BY user_principal_name",
-      success_criteria:
-        "The answer queries directory_users_delta(), filters to data rows (_row_kind IS NULL) with account_enabled = true, and returns user_principal_name and display_name.",
     },
     {
       name: "save_delta_cursor",
       prompt: "After syncing users, how do I get the cursor to use for the next incremental sync?",
-      reference_sql:
-        "SELECT _delta_next FROM azure.main.directory_users_delta() WHERE _row_kind = 'marker'",
-      success_criteria:
-        "The answer selects _delta_next from the marker row (_row_kind = 'marker') of directory_users_delta() and explains it should be replayed via the delta_token argument.",
     },
     {
       name: "security_groups",
       prompt: "Which groups in the directory are security-enabled?",
-      reference_sql:
-        "SELECT display_name FROM azure.main.directory_groups_delta() WHERE _row_kind IS NULL AND security_enabled ORDER BY display_name",
-      success_criteria:
-        "The answer queries directory_groups_delta(), filters to data rows where security_enabled = true, and returns the group display_name.",
     },
     {
       name: "devices_by_os",
       prompt: "How many registered devices are there of each operating system?",
-      reference_sql:
-        "SELECT operating_system, count(*) AS device_count FROM azure.main.directory_devices_delta() WHERE _row_kind IS NULL GROUP BY operating_system ORDER BY device_count DESC, operating_system",
-      success_criteria:
-        "The answer queries directory_devices_delta(), filters to data rows (_row_kind IS NULL), groups by operating_system and returns a per-OS device count.",
     },
     {
       name: "browse_collections",
       prompt: "What directory object types can I sync, and which table function serves each?",
-      reference_sql:
-        "SELECT collection, table_function FROM azure.main.directory_collections ORDER BY collection",
-      success_criteria:
-        "The answer reads directory_collections and lists the object types (users, groups, devices) alongside their table functions.",
     },
   ]),
 };
