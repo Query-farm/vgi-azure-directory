@@ -55,7 +55,7 @@ const catalogInterface = new ReadOnlyCatalogInterface(makeCatalog(functions), re
 serveVgiWorker({
   name: "azure",
   doc: "Microsoft Entra ID (Azure AD) directory objects — users, groups, and devices — as incremental delta table functions over Microsoft Graph.",
-  version: "0.2.1",
+  version: "0.2.2",
   repositoryUrl: "https://github.com/Query-farm/vgi-azure-directory",
   serverId: "vgi-azure-directory",
   registry,
