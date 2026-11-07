@@ -27,6 +27,9 @@ export function makeDeltaFunction(spec: CollectionSpec, clientFactory: ClientFac
   const schema = schemaFor(spec);
   return defineTableFunction<Args, State>({
     name: spec.fn,
+    // Request the azure_graph secret at bind so the connector delivers it (a
+    // missing secret resolves to nothing, so credential-free LIMIT 0 binds still work).
+    requiredSecrets: ["azure_graph"],
     description: spec.description,
     args: { delta_token: new Utf8(), select_fields: new Utf8() },
     argDefaults: { delta_token: "", select_fields: spec.defaultSelect },
