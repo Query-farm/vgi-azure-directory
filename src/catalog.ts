@@ -29,6 +29,8 @@ export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
 const CATALOG_TAGS: Record<string, string> = {
   "vgi.title": "Microsoft Entra Directory",
+  "vgi.subtitle":
+    "Sync Microsoft Entra ID users, groups, and devices from Microsoft Graph as incremental SQL change feeds.",
   "vgi.doc_llm":
     "Microsoft Entra ID (Azure AD) directory objects as SQL delta table functions over Microsoft " +
     "Graph. Reach for it to sync the tenant's users, groups, and devices as an incremental change " +
