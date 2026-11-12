@@ -20,10 +20,21 @@ export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
   name: "azure_graph",
   description: "Microsoft Entra app-only (client-credentials) credentials for Microsoft Graph",
   schema: new Schema([
-    new Field("tenant_id", new Utf8(), true),
-    new Field("client_id", new Utf8(), true),
-    new Field("client_secret", new Utf8(), true, new Map([["redact", "true"]])),
-  ]),
+    new Field("tenant_id", new Utf8(), true, new Map([["vgi_doc", "Directory (tenant) ID from the app registration's Overview page in Microsoft Entra ID"]])),
+    new Field("client_id", new Utf8(), true, new Map([["vgi_doc", "Application (client) ID from the app registration's Overview page"]])),
+    new Field(
+      "client_secret",
+      new Utf8(),
+      true,
+      new Map([
+        ["redact", "true"],
+        ["vgi_doc", "Client secret value created under the app registration's Certificates & secrets page"],
+      ]),
+    ),
+  ], new Map([
+    // Register an app, create a client secret, then grant it the Microsoft Graph User.Read.All, Group.Read.All and Device.Read.All application permissions (admin-consented).
+    ["vgi_doc_url", "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app"],
+  ])),
 };
 
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
@@ -43,11 +54,8 @@ const CATALOG_TAGS: Record<string, string> = {
   "vgi.doc_md":
     "## Microsoft Entra Directory\n\n" +
     "Incremental (delta) access to Microsoft Entra ID (Azure AD) directory objects via Microsoft " +
-    "Graph, exposed as three DuckDB table functions.\n\n" +
-    "- **`directory_users_delta`** — Entra ID users as an incremental change feed (with removals).\n" +
-    "- **`directory_groups_delta`** — Entra ID groups as an incremental change feed.\n" +
-    "- **`directory_devices_delta`** — Entra ID devices as an incremental change feed.\n\n" +
-    "Each function returns changed objects plus a single marker row (`_row_kind = 'marker'`) whose " +
+    "Graph: users (including removals), groups and devices, each as an incremental change feed.\n\n" +
+    "Each feed returns changed objects plus a single marker row (`_row_kind = 'marker'`) whose " +
     "`_delta_next` column holds the verbatim `@odata.deltaLink` to persist and replay on the next " +
     "scan. Call with no arguments for a full sync; pass `delta_token := '<link>'` for an " +
     "incremental sync. An app-only `azure_graph` secret (Microsoft Entra client credentials) is " +
@@ -137,12 +145,9 @@ const SCHEMA_TAGS: Record<string, string> = {
     "projection is pinned for the life of a token.",
   "vgi.doc_md":
     "## Entra directory delta functions\n\n" +
-    "| Function | Object type | Returns |\n" +
-    "| --- | --- | --- |\n" +
-    "| `directory_users_delta` | Users | changed users + delta cursor |\n" +
-    "| `directory_groups_delta` | Groups | changed groups + delta cursor |\n" +
-    "| `directory_devices_delta` | Devices | changed devices + delta cursor |\n\n" +
-    "All three share the same shape: read data rows with `WHERE _row_kind IS NULL`, and take the " +
+    "One delta feed per Entra ID object type (users, groups, devices); each returns the changed " +
+    "objects plus a delta cursor.\n\n" +
+    "All feeds share the same shape: read data rows with `WHERE _row_kind IS NULL`, and take the " +
     "next cursor from the single marker row's `_delta_next`. Each requires an app-only " +
     "`azure_graph` secret.",
   "vgi.keywords": JSON.stringify([
