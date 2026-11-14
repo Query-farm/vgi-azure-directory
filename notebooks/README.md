@@ -80,3 +80,12 @@ locked environment files so the folder remains independently runnable. Generated
 charts and logs are ignored; the main notebook retains its embedded outputs.
 
 See [STANDARD.md](STANDARD.md) for the presentation conventions.
+
+## SQL credential isolation
+
+The notebook creates Haybarn with a fresh temporary `secret_directory` and
+`allow_persistent_secrets=False` before attaching workers. It fully drains and
+checks an empty secret inventory, then creates only explicitly `TEMPORARY`
+public fixture secrets and verifies their `persistent=false`, `storage=memory`
+metadata. Cleanup removes the temporary directory after closing the connection.
+Existing user SQL secrets are neither read, modified nor deleted.
