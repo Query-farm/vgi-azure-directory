@@ -70,3 +70,7 @@ ATTACH 'azure' AS azure (TYPE vgi, LOCATION '/path/to/vgi-azure-directory/bin/vg
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Notebooks
+
+[Run the executed directory-delta walkthrough](notebooks/README.md) to reconstruct synthetic user state, inspect cursor markers and verify idempotent replay through the real VGI functions.
