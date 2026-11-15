@@ -37,6 +37,18 @@ export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
   ])),
 };
 
+// Upstream references rendered into the catalog docs (VGI183: link out to the service, API
+// docs and app-registration/permission docs this worker actually calls).
+const SOURCES_MD =
+  "### Sources and references\n\n" +
+  "- [Microsoft Graph delta query overview](https://learn.microsoft.com/en-us/graph/delta-query-overview) — how `@odata.deltaLink` change tracking works\n" +
+  "- [user: delta](https://learn.microsoft.com/en-us/graph/api/user-delta) — users feed\n" +
+  "- [group: delta](https://learn.microsoft.com/en-us/graph/api/group-delta) — groups feed\n" +
+  "- [device: delta](https://learn.microsoft.com/en-us/graph/api/device-delta) — devices feed\n" +
+  "- [Register an app](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) — create the app-only client credentials, then grant `User.Read.All` / `Group.Read.All` / `Device.Read.All`";
+const SOURCES_LLM =
+  " Upstream Microsoft docs: Microsoft Graph delta query overview https://learn.microsoft.com/en-us/graph/delta-query-overview; user: delta https://learn.microsoft.com/en-us/graph/api/user-delta; group: delta https://learn.microsoft.com/en-us/graph/api/group-delta; device: delta https://learn.microsoft.com/en-us/graph/api/device-delta; Register an app https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app.";
+
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
 const CATALOG_TAGS: Record<string, string> = {
   "vgi.title": "Microsoft Entra Directory",
@@ -50,7 +62,7 @@ const CATALOG_TAGS: Record<string, string> = {
     "delta cursor to persist. A first call with no delta_token performs a full sync; passing a " +
     "previously saved delta_token returns only what changed. Requires an app-only (client-" +
     "credentials) 'azure_graph' secret (tenant_id, client_id, client_secret) with Graph read " +
-    "permission for the objects being queried (e.g. User.Read.All, Group.Read.All, Device.Read.All).",
+    "permission for the objects being queried (e.g. User.Read.All, Group.Read.All, Device.Read.All)." + SOURCES_LLM,
   "vgi.doc_md":
     "## Microsoft Entra Directory\n\n" +
     "Incremental (delta) access to Microsoft Entra ID (Azure AD) directory objects via Microsoft " +
@@ -59,7 +71,7 @@ const CATALOG_TAGS: Record<string, string> = {
     "`_delta_next` column holds the verbatim `@odata.deltaLink` to persist and replay on the next " +
     "scan. Call with no arguments for a full sync; pass `delta_token := '<link>'` for an " +
     "incremental sync. An app-only `azure_graph` secret (Microsoft Entra client credentials) is " +
-    "required.",
+    "required.\n\n" + SOURCES_MD,
   "vgi.keywords": JSON.stringify([
     "azure",
     "entra id",
