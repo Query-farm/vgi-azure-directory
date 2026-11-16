@@ -1,0 +1,69 @@
+# name: test/sql/offline.test
+# description: vgi-azure-directory without credentials or network: ATTACH, the advertised functions
+# and tables, and every catalog executable example (credential-free bind probes and
+# static manifests). Runs over every transport; the live Azure scans need an azure_graph
+# secret and are not exercised here.
+# group: [sql]
+
+require-env VGI_TEST_WORKER
+
+# Transport failures must fail the suite rather than silently skip it.
+set ignore_error_messages
+
+statement ok
+ATTACH 'azure' AS azure (TYPE vgi, LOCATION '{VGI_TEST_WORKER}');
+
+query TT
+SELECT DISTINCT schema_name, function_name FROM duckdb_functions() WHERE database_name = 'azure' ORDER BY ALL;
+----
+main	directory_devices_delta
+main	directory_groups_delta
+main	directory_users_delta
+
+query TT
+SELECT schema_name, table_name FROM duckdb_tables() WHERE database_name = 'azure'
+UNION ALL SELECT schema_name, view_name FROM duckdb_views() WHERE database_name = 'azure' ORDER BY ALL;
+----
+main	directory_collections
+
+# users_bind_probe: Bind directory_users_delta and expose its result columns (credential-free; drop LIMIT 0 and attach an azure_graph secret to sync real users)
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, user_principal_name, display_name, account_enabled FROM azure.main.directory_users_delta() LIMIT 0);
+----
+id	VARCHAR
+user_principal_name	VARCHAR
+display_name	VARCHAR
+account_enabled	BOOLEAN
+
+query I
+SELECT count(*) FROM (SELECT id, user_principal_name, display_name, account_enabled FROM azure.main.directory_users_delta() LIMIT 0);
+----
+0
+
+# groups_bind_probe: Bind directory_groups_delta and expose its result columns (credential-free; attach an azure_graph secret to sync real groups)
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, display_name, mail, security_enabled FROM azure.main.directory_groups_delta() LIMIT 0);
+----
+id	VARCHAR
+display_name	VARCHAR
+mail	VARCHAR
+security_enabled	BOOLEAN
+
+query I
+SELECT count(*) FROM (SELECT id, display_name, mail, security_enabled FROM azure.main.directory_groups_delta() LIMIT 0);
+----
+0
+
+# devices_bind_probe: Bind directory_devices_delta and expose its result columns (credential-free; attach an azure_graph secret to sync real devices)
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, display_name, operating_system, account_enabled FROM azure.main.directory_devices_delta() LIMIT 0);
+----
+id	VARCHAR
+display_name	VARCHAR
+operating_system	VARCHAR
+account_enabled	BOOLEAN
+
+query I
+SELECT count(*) FROM (SELECT id, display_name, operating_system, account_enabled FROM azure.main.directory_devices_delta() LIMIT 0);
+----
+0

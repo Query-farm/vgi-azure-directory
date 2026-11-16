@@ -52,7 +52,7 @@ for (const f of functions) registry.register(f);
 
 const catalogInterface = new ReadOnlyCatalogInterface(makeCatalog(functions), registry);
 
-serveVgiWorker({
+const server = serveVgiWorker({
   name: "azure",
   doc: "Microsoft Entra ID (Azure AD) directory objects — users, groups, and devices — as incremental delta table functions over Microsoft Graph.",
   version: "0.4.1",
@@ -61,3 +61,7 @@ serveVgiWorker({
   registry,
   catalogInterface,
 });
+
+// bin/<worker> --http and ci/run-integration.sh read the bound port from this line
+// (PORT=0 binds any free port).
+console.log(`PORT:${server.port}`);
